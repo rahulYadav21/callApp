@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Sentry from '@sentry/react-native';
 
-import HomeScreens from "./src/screens/HomeScreens.jsx";
+import HomeScreens from './src/screens/HomeScreens.jsx';
 import SettingScreen from './src/screens/SettingScreen';
 // import HistoryScreen from './src/screens/HistoryScreen';
 
@@ -59,11 +59,17 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Home" component={HomeScreens} />
-          <Stack.Screen name="Setting" component={SettingScreen} />
-          {/* <Stack.Screen name="History" component={HistoryScreen} /> */}
-          {/* <Stack.Screen name="Test" component={TestButton} /> */}
+        <Stack.Navigator>
+          <Stack.Screen
+            name="Home"
+            component={HomeScreens}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Setting"
+            component={SettingScreen}
+            options={{ headerShown: true, title: 'Settings' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

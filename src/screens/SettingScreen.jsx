@@ -5,9 +5,10 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function SettingScreen() {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -16,8 +17,7 @@ export default function SettingScreen() {
     setIsEnabled(!isEnabled);
   }
   return (
-    // <SafeAreaView>
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.enableSwitch}>
         <Text>Enable POS Sync</Text>
         <Switch
@@ -53,8 +53,7 @@ export default function SettingScreen() {
       >
         <Text>See History</Text>
       </TouchableOpacity> */}
-    </View>
-    // </SafeAreaView>
+    </SafeAreaView>
   );
 }
 
@@ -63,12 +62,12 @@ export default function SettingScreen() {
 /* -------------------------------------------------------------------------- */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    // justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#e8f4fc',
-  },
+  flex: 1,
+  // paddingTop: 40,
+  paddingHorizontal: 20,
+  // paddingVertical: 10,
+  backgroundColor: '#e8f4fc',
+},
   firstSection: {
     flexGrow: 1,
   },
