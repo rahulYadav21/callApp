@@ -1,73 +1,95 @@
 import {
   View,
   Text,
-  Switch,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-export default function SettingScreen() {
-  const [isEnabled, setIsEnabled] = useState(false);
+export default function SettingScreen({ navigation }) {
   const [posEndpoint, setPosEndpoint] = useState('');
-  const handleSwitch = () => {
-    setIsEnabled(!isEnabled);
-  }
+  const [posNumber, setPosNumber] = useState('');
+
+  useEffect(() => {
+    // Load saved data on mount
+    const loadData = async () => {
+      const savedEndpoint = await AsyncStorage.getItem('posEndpoint');
+      const savedNumber = await AsyncStorage.getItem('posNumber');
+
+      if (savedEndpoint) setPosEndpoint(savedEndpoint);
+      if (savedNumber) setPosNumber(savedNumber);
+    };
+    loadData();
+  }, []);
+
+  const handleSave = async () => {
+    if (!posEndpoint || !posNumber) {
+      Alert.alert('Validation Error', 'Both fields are required.');
+      return;
+    }
+
+    try {
+      await AsyncStorage.setItem('posEndpoint', posEndpoint);
+      await AsyncStorage.setItem('posNumber', posNumber);
+
+      console.log('Saved:', posEndpoint, posNumber);
+      Alert.alert('Success', 'Configuration saved successfully!');
+      navigation.navigate('Home');
+    } catch (e) {
+      console.log('Save error:', e);
+      Alert.alert('Error', 'Failed to save configuration.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.enableSwitch}>
-        <Text>Enable POS Sync</Text>
-        <Switch
-          value={isEnabled}
-          onValueChange={handleSwitch}
+      <View style={styles.posEndpoint}>
+        <Text>POS Default Number</Text>
+        <TextInput
+          style={styles.inputText}
+          value={posNumber}
+          onChangeText={setPosNumber}
+          placeholder="Enter POS Number"
         />
       </View>
       <View style={styles.posEndpoint}>
-      <Text>POS Endpoint</Text>
-      <TextInput
-        style={styles.inputText}
-        value={posEndpoint}
-        onChangeText={setPosEndpoint}
-        placeholder="Enter POS URL"
-      />
-      </View>
-      <View style={styles.savedEndpoint}>
-      <Text>
-        Saved Endpoint:
-        {/* {savedEndpoint} */}
-      </Text>
+        <Text>POS Default Endpoint</Text>
+        <TextInput
+          style={styles.inputText}
+          value={posEndpoint}
+          onChangeText={setPosEndpoint}
+          placeholder="Enter POS URL"
+        />
       </View>
 
-      <TouchableOpacity
-        style={styles.saveButton}
-        //   onPress={handleSave}
-      >
+      <View style={styles.savedEndpoint}>
+        <Text>Saved Number: {posNumber}</Text>
+        <Text>Saved Endpoint: {posEndpoint}</Text>
+      </View>
+
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save Configuration</Text>
       </TouchableOpacity>
-      {/* <TouchableOpacity
-        style={styles.historyButton}
-          onPress={() => navigation.navigate('History')}
-      >
-        <Text>See History</Text>
-      </TouchableOpacity> */}
     </SafeAreaView>
   );
 }
+
 
 /* -------------------------------------------------------------------------- */
 /*                                     css                                    */
 /* -------------------------------------------------------------------------- */
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  // paddingTop: 40,
-  paddingHorizontal: 20,
-  // paddingVertical: 10,
-  backgroundColor: '#e8f4fc',
-},
+    flex: 1,
+    // paddingTop: 40,
+    paddingHorizontal: 20,
+    // paddingVertical: 10,
+    backgroundColor: '#e8f4fc',
+  },
   firstSection: {
     flexGrow: 1,
   },
@@ -102,12 +124,12 @@ const styles = StyleSheet.create({
   posEndpoint: {
     marginTop: 10,
     marginBottom: 10,
-    gap: 10
+    gap: 10,
   },
   savedEndpoint: {
     marginTop: 10,
     marginBottom: 10,
-    gap: 10
+    gap: 10,
   },
   saveButton: {
     backgroundColor: '#0c3c5f',

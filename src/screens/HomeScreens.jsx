@@ -1,12 +1,114 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import React from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, PermissionsAndroid, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fonts } from '../utils/fonts';
-// import { Ionicons } from '@expo/vector-icons';
-// import { Ionicons } from '@expo/vector-icons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import BackgroundService from 'react-native-background-actions';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Simulate delay function
+const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
+
+const veryIntenciveTask = async () => {
+  while (BackgroundService.isRunning()) {
+    try{
+      const posNumber = await AsyncStorage.getItem('posNumber');
+      const posEndpoint = await AsyncStorage.getItem('posEndpoint');
+      if(!posNumber || !posEndpoint){
+        console.log("No posNumber or posEndpoint");
+        await sleep(5000);
+        return;
+      }
+      const logData = {
+        number: posNumber,
+        timeStamp : new Date().toISOString(),
+      };
+
+      await fetch(`${posEndpoint}/callLogs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(logData),
+      })
+      console.log("Call logged", logData);
+    }
+    catch(e){
+      console.log("Error logging call", e);
+    }
+    await sleep(5000);
+  }
+  }
+
+  const options = {
+  taskName: 'CallLogger',
+  taskTitle: 'Listening for Calls',
+  taskDesc: 'Running in background...',
+  taskIcon: {
+    name: 'ic_launcher',
+    type: 'mipmap',
+  },
+  color: '#ff00ff',
+};
 
 export default function HomeScreens({ navigation }) {
+
+  const [isRunning, setIsRunning] = useState(false);
+  const [displayEndpoint, setDisplayEndpoint] = useState('');
+
+  useEffect (() => {
+    const loadSettings = async () => {
+      const savedEndpoint = await AsyncStorage.getItem('posEndpoint');
+      if(savedEndpoint) setDisplayEndpoint(savedEndpoint);
+    }
+    loadSettings();
+  }, []);
+
+   const requestCallPermissions = async () => {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS,
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+      ]);
+  
+       const allGranted = Object.values(granted).every((v) => v === 'granted');
+
+    if (!allGranted) {
+      Alert.alert('Permission Required', 'Please grant all permissions.');
+      return false;
+    }
+
+    return true;
+    };
+
+    const startServices = async () => {
+      const hasPermissions = await requestCallPermissions();
+
+      if(!hasPermissions){
+        return;
+      }
+      const posEndpoint = await AsyncStorage.getItem('posEndpoint');
+      const posNumber = await AsyncStorage.getItem('posNumber');
+      if(!posEndpoint || !posNumber){
+        console.log("No posNumber or posEndpoint");
+        return;
+      }
+      
+      if(BackgroundService.isRunning()){
+        await BackgroundService.start(veryIntenciveTask, options);
+        setIsRunning(true);
+      }
+    };
+
+    const stopServices = async () => {
+      if(BackgroundService.isRunning()){
+        await BackgroundService.stop();
+        setIsRunning(false);
+      }
+    };
+
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -17,7 +119,7 @@ export default function HomeScreens({ navigation }) {
         <Image source={require('../assets/logo.png')} style={styles.avatar} />
         <TouchableOpacity style={styles.urlBox}>
           <Text style={styles.urlText}>
-            http://192.168.43.150/system-monitor/status/uptime
+            {displayEndpoint ? displayEndpoint : 'No Endpoint Saved!'}
           </Text>
           <Ionicons name="copy-outline" style={styles.copyIcon} />
         </TouchableOpacity>
@@ -25,7 +127,7 @@ export default function HomeScreens({ navigation }) {
       <View style={styles.bottomSection}>
         <TouchableOpacity
           style={styles.controlEndCallButton}
-          //   onPress={handleEndCall}
+            onPress={stopServices}
         >
           <Ionicons
             name="call"
@@ -34,7 +136,7 @@ export default function HomeScreens({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.controlCallButton}
-          //   onPress={handleMakeCall}
+            onPress={startServices}
         >
           <Ionicons name="call" style={styles.controlIcon} />
         </TouchableOpacity>
