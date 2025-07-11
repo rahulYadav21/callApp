@@ -74,7 +74,7 @@ export default function HomeScreens({ navigation }) {
       console.log('📩 Logged call:', logData);
 
       try {
-        await fetch(`${posEndpoint}/callLogs`, {
+        await fetch(`${posEndpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(logData),

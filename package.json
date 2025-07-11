@@ -21,6 +21,7 @@
     "react-native": "0.80.0",
     "react-native-background-actions": "^4.0.1",
     "react-native-call-log": "^2.1.2",
+    "react-native-codegen": "^0.70.7",
     "react-native-device-info": "^14.0.4",
     "react-native-permissions": "^5.4.1",
     "react-native-safe-area-context": "^5.5.0",

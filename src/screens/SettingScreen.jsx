@@ -170,7 +170,8 @@ export default function SettingScreen({ navigation }) {
     }
 
     try{
-      const resp = await axios.get(`${posEndpoint}/callLogs`);
+      // const resp = await axios.get(`${posEndpoint}/callLogs`);
+      const resp = await axios.get(`${posEndpoint}`);
       Alert.alert('Success', 'Connection successful.');
       console.log('Connection successful:', resp.status);
     }catch(e){
