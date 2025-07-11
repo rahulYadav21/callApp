@@ -1,3 +1,28 @@
 {
-  "callLogs": []
+  "callLogs": [
+    {
+      "id": "0e2e",
+      "number": "6505551212",
+      "timeStamp": "2025-07-11T01:01:13.974Z",
+      "state": "INCOMING_CALL"
+    },
+    {
+      "id": "ece1",
+      "number": "6505551212",
+      "timeStamp": "2025-07-11T01:01:14.024Z",
+      "state": "INCOMING_CALL"
+    },
+    {
+      "id": "a844",
+      "number": "6505551212",
+      "timeStamp": "2025-07-11T01:01:13.550Z",
+      "state": "INCOMING_CALL"
+    },
+    {
+      "id": "f1c7",
+      "number": "6505551212",
+      "timeStamp": "2025-07-11T01:01:14.077Z",
+      "state": "INCOMING_CALL"
+    }
+  ]
 }

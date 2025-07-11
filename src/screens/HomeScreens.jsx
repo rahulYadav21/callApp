@@ -1,78 +1,52 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, PermissionsAndroid, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  PermissionsAndroid,
+  Alert,
+  DeviceEventEmitter,
+  NativeModules,
+} from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fonts } from '../utils/fonts';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import BackgroundService from 'react-native-background-actions';
+import { fonts } from '../utils/fonts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Simulate delay function
-const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
-
-const veryIntenciveTask = async () => {
-  while (BackgroundService.isRunning()) {
-    try{
-      const posNumber = await AsyncStorage.getItem('posNumber');
-      const posEndpoint = await AsyncStorage.getItem('posEndpoint');
-      if(!posNumber || !posEndpoint){
-        console.log("No posNumber or posEndpoint");
-        await sleep(5000);
-        return;
-      }
-      const logData = {
-        number: posNumber,
-        timeStamp : new Date().toISOString(),
-      };
-
-      await fetch(`${posEndpoint}/callLogs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(logData),
-      })
-      console.log("Call logged", logData);
-    }
-    catch(e){
-      console.log("Error logging call", e);
-    }
-    await sleep(5000);
-  }
-  }
-
-  const options = {
-  taskName: 'CallLogger',
-  taskTitle: 'Listening for Calls',
-  taskDesc: 'Running in background...',
-  taskIcon: {
-    name: 'ic_launcher',
-    type: 'mipmap',
-  },
-  color: '#ff00ff',
-};
+const { CallDetection } = NativeModules; // Native module you created
 
 export default function HomeScreens({ navigation }) {
-
   const [isRunning, setIsRunning] = useState(false);
   const [displayEndpoint, setDisplayEndpoint] = useState('');
+  const [listenerActive, setListenerActive] = useState(false);
 
-  useEffect (() => {
+  useEffect(() => {
     const loadSettings = async () => {
       const savedEndpoint = await AsyncStorage.getItem('posEndpoint');
-      if(savedEndpoint) setDisplayEndpoint(savedEndpoint);
-    }
+      if (savedEndpoint) setDisplayEndpoint(savedEndpoint);
+    };
+
     loadSettings();
   }, []);
 
-   const requestCallPermissions = async () => {
-      const granted = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
-        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
-        PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS,
-        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
-      ]);
-  
-       const allGranted = Object.values(granted).every((v) => v === 'granted');
+  useEffect(() => {
+    // Clean up listener when component unmounts
+    return () => {
+      DeviceEventEmitter.removeAllListeners('onCallStateChanged');
+    };
+  }, []);
+
+  const requestCallPermissions = async () => {
+    const granted = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+      PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+      PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS,
+      PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+    ]);
+
+    const allGranted = Object.values(granted).every(v => v === 'granted');
 
     if (!allGranted) {
       Alert.alert('Permission Required', 'Please grant all permissions.');
@@ -80,34 +54,99 @@ export default function HomeScreens({ navigation }) {
     }
 
     return true;
-    };
+  };
 
-    const startServices = async () => {
-      const hasPermissions = await requestCallPermissions();
+  
+  const handleCallEvent = async event => {
+    const { state, phoneNumber } = event;
+    console.log('📞 Call State Changed:', state, phoneNumber);
 
-      if(!hasPermissions){
-        return;
-      }
+    if (state === 'INCOMING_CALL' && phoneNumber) {
       const posEndpoint = await AsyncStorage.getItem('posEndpoint');
-      const posNumber = await AsyncStorage.getItem('posNumber');
-      if(!posEndpoint || !posNumber){
-        console.log("No posNumber or posEndpoint");
-        return;
-      }
-      
-      if(BackgroundService.isRunning()){
-        await BackgroundService.start(veryIntenciveTask, options);
-        setIsRunning(true);
-      }
-    };
+      if (!posEndpoint) return;
 
-    const stopServices = async () => {
-      if(BackgroundService.isRunning()){
-        await BackgroundService.stop();
-        setIsRunning(false);
-      }
-    };
+      const logData = {
+        number: phoneNumber,
+        timeStamp: new Date().toISOString(),
+        state: 'INCOMING_CALL',
+      };
+      console.log('📩 Logged call:', logData);
 
+      try {
+        await fetch(`${posEndpoint}/callLogs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(logData),
+        });
+        console.log('📩 Logged call:', logData);
+      } catch (e) {
+        console.log('❌ Failed to log call:', e);
+      }
+    }
+  };
+  const startServices = async () => {
+    const hasPermissions = await requestCallPermissions();
+    if (!hasPermissions) return;
+
+    const posEndpoint = await AsyncStorage.getItem('posEndpoint');
+    // const posNumber = await AsyncStorage.getItem('posNumber');
+
+    if (!posEndpoint) {
+      Alert.alert(
+        'Missing Info',
+        'Please set endpoint and number in settings.',
+      );
+      return;
+    } else {
+      Alert.alert('Success', 'Services started successfully!');
+    }
+
+    try {
+      CallDetection.startListener(); // Native method
+      setIsRunning(true);
+      setListenerActive(true);
+
+      // DeviceEventEmitter.addListener(
+      //   'onCallStateChanged',
+      //   ({ state, phoneNumber }) => {
+      //     handleCallEvent({ state, phoneNumber });
+      //   },
+      // );
+      // DeviceEventEmitter.addListener('onCallStateChanged', event => {
+      //   const { state, phoneNumber } = event;
+      //   console.log('📞 Call State Changed Listener:', state, phoneNumber);
+
+      //   // if (state === 'INCOMING_CALL' && phoneNumber) {
+      //     handleCallEvent(event);
+      //   // }
+      // });
+      DeviceEventEmitter.addListener('onCallStateChanged', event => {
+        console.log('📞 Raw event:', event);
+
+        const state = event?.state || 'UNKNOWN';
+        const phoneNumber = event?.phoneNumber || 'N/A';
+
+        console.log('📞 Parsed:', state, phoneNumber);
+        handleCallEvent({ state, phoneNumber });
+      });
+      console.log('✅ Call listener started');
+    } catch (e) {
+      console.log('❌ Failed to start listener:', e);
+    }
+  };
+
+  const stopServices = async () => {
+    try {
+      CallDetection.stopListener(); // Native method
+      setIsRunning(false);
+      setListenerActive(false);
+
+      DeviceEventEmitter.removeAllListeners('onCallStateChanged');
+      console.log('🛑 Call listener stopped');
+    } catch (e) {
+      console.log('❌ Failed to stop listener:', e);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -115,6 +154,7 @@ export default function HomeScreens({ navigation }) {
         <Text style={styles.headerTitle}>Call Id Name</Text>
         <Text style={styles.headerNo}>+91 9876543210</Text>
       </View>
+
       <View style={styles.middleSection}>
         <Image source={require('../assets/logo.png')} style={styles.avatar} />
         <TouchableOpacity style={styles.urlBox}>
@@ -124,22 +164,25 @@ export default function HomeScreens({ navigation }) {
           <Ionicons name="copy-outline" style={styles.copyIcon} />
         </TouchableOpacity>
       </View>
+
       <View style={styles.bottomSection}>
         <TouchableOpacity
           style={styles.controlEndCallButton}
-            onPress={stopServices}
+          onPress={stopServices}
         >
           <Ionicons
             name="call"
             style={[styles.controlIcon, styles.endCallIcon]}
           />
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.controlCallButton}
-            onPress={startServices}
+          onPress={startServices}
         >
           <Ionicons name="call" style={styles.controlIcon} />
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.controlSettingsButton}
           onPress={() => navigation.navigate('Setting')}
@@ -150,7 +193,6 @@ export default function HomeScreens({ navigation }) {
     </SafeAreaView>
   );
 }
-
 /* -------------------------------------------------------------------------- */
 /*                                  style css                                 */
 /* -------------------------------------------------------------------------- */
@@ -220,7 +262,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: "90%",
+    width: '90%',
     paddingBottom: 30,
   },
 
