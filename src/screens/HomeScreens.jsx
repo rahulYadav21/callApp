@@ -67,7 +67,8 @@ export default function HomeScreens({ navigation }) {
 
       const logData = {
         number: phoneNumber,
-        timeStamp: new Date().toISOString(),
+        // timeStamp: new Date().toISOString(),
+        timeStamp: new Date().toLocaleString('en-GB'),
         state: 'INCOMING_CALL',
       };
       console.log('📩 Logged call:', logData);
@@ -89,7 +90,6 @@ export default function HomeScreens({ navigation }) {
     if (!hasPermissions) return;
 
     const posEndpoint = await AsyncStorage.getItem('posEndpoint');
-    // const posNumber = await AsyncStorage.getItem('posNumber');
 
     if (!posEndpoint) {
       Alert.alert(
@@ -102,24 +102,10 @@ export default function HomeScreens({ navigation }) {
     }
 
     try {
+       NativeModules.CallDetection.startForegroundService(); // ✅ Start native service
       CallDetection.startListener(); // Native method
       setIsRunning(true);
       setListenerActive(true);
-
-      // DeviceEventEmitter.addListener(
-      //   'onCallStateChanged',
-      //   ({ state, phoneNumber }) => {
-      //     handleCallEvent({ state, phoneNumber });
-      //   },
-      // );
-      // DeviceEventEmitter.addListener('onCallStateChanged', event => {
-      //   const { state, phoneNumber } = event;
-      //   console.log('📞 Call State Changed Listener:', state, phoneNumber);
-
-      //   // if (state === 'INCOMING_CALL' && phoneNumber) {
-      //     handleCallEvent(event);
-      //   // }
-      // });
       DeviceEventEmitter.addListener('onCallStateChanged', event => {
         console.log('📞 Raw event:', event);
 
@@ -137,6 +123,7 @@ export default function HomeScreens({ navigation }) {
 
   const stopServices = async () => {
     try {
+      NativeModules.CallDetection.stopForegroundService(); // ✅ Stop native service
       CallDetection.stopListener(); // Native method
       setIsRunning(false);
       setListenerActive(false);

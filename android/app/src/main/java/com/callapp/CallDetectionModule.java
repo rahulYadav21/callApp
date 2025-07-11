@@ -1,9 +1,11 @@
 package com.callapp;
 
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
-import android.content.Context;
-import android.util.Log; // ✅ Required for Log.d
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -16,6 +18,8 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 public class CallDetectionModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
+    private TelephonyManager telephonyManager;
+    private PhoneStateListener phoneStateListener;
 
     public CallDetectionModule(ReactApplicationContext context) {
         super(context);
@@ -29,9 +33,27 @@ public class CallDetectionModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void startForegroundService() {
+        Intent serviceIntent = new Intent(reactContext, CallForegroundService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            reactContext.startForegroundService(serviceIntent);
+        } else {
+            reactContext.startService(serviceIntent);
+        }
+        Log.d("CallDetection", "Foreground service started");
+    }
+
+    @ReactMethod
+    public void stopForegroundService() {
+        Intent serviceIntent = new Intent(reactContext, CallForegroundService.class);
+        reactContext.stopService(serviceIntent);
+        Log.d("CallDetection", "Foreground service stopped");
+    }
+
+    @ReactMethod
     public void startListener() {
-        TelephonyManager telephonyManager = (TelephonyManager) reactContext.getSystemService(Context.TELEPHONY_SERVICE);
-        telephonyManager.listen(new PhoneStateListener() {
+        telephonyManager = (TelephonyManager) reactContext.getSystemService(Context.TELEPHONY_SERVICE);
+        phoneStateListener = new PhoneStateListener() {
             @Override
             public void onCallStateChanged(int state, String phoneNumber) {
                 super.onCallStateChanged(state, phoneNumber);
@@ -53,12 +75,24 @@ public class CallDetectionModule extends ReactContextBaseJavaModule {
                 params.putString("state", callState);
                 params.putString("phoneNumber", phoneNumber);
                 sendEvent(params);
+
+                Log.d("CallDetection", "Call State: " + callState + " | Number: " + phoneNumber);
             }
-        }, PhoneStateListener.LISTEN_CALL_STATE);
+        };
+
+        telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+        Log.d("CallDetection", "Listener started");
+    }
+
+    @ReactMethod
+    public void stopListener() {
+        if (telephonyManager != null && phoneStateListener != null) {
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+            Log.d("CallDetection", "Listener stopped");
+        }
     }
 
     private void sendEvent(WritableMap params) {
-        Log.d("CallDetection", "Emitting event: " + params.toString()); // ✅ Logging event
         reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
             .emit("onCallStateChanged", params);
